@@ -8,12 +8,20 @@ import (
 
 	"net/http"
 
+	"github.com/alecthomas/kong"
+
 	"github.com/lrosenman/ambient"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var cli struct {
+	AppKey string `arg:"true" help:"Ambient APP key"`
+	APIKey string `arg:"true" help:"Ambient API key"`
+	Port   uint16 `default:"9876" help:"http port to listen on"`
+}
 
 func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
 	dr, err := ambient.Device(key)
@@ -241,17 +249,13 @@ func recordMetrics(key ambient.Key) {
 }
 
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: ambient-wx-exporter app_key api_key")
-		os.Exit(1)
-	}
+	ctx := kong.Parse(&cli)
 
-	applicationKey := os.Args[1]
-	apiKey := os.Args[2]
-	key := ambient.NewKey(applicationKey, apiKey)
+	key := ambient.NewKey(cli.AppKey, cli.APIKey)
 
 	recordMetrics(key)
 
+	listen := fmt.Sprintf(":%d", cli.Port)
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(":2112", nil)
+	http.ListenAndServe(listen, nil)
 }
