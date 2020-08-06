@@ -9,6 +9,8 @@ import (
 	"net/http"
 
 	"github.com/alecthomas/kong"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	"github.com/lrosenman/ambient"
 
@@ -16,6 +18,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var logger log.Logger
 
 var cli struct {
 	AppKey string `arg:"true" help:"Ambient APP key"`
@@ -249,7 +253,11 @@ func recordMetrics(key ambient.Key) {
 }
 
 func main() {
-	ctx := kong.Parse(&cli)
+	logger = log.NewLogfmtLogger(os.Stderr)
+	logger = level.NewFilter(logger, level.AllowInfo())
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+
+	kong.Parse(&cli)
 
 	key := ambient.NewKey(cli.AppKey, cli.APIKey)
 
@@ -257,5 +265,7 @@ func main() {
 
 	listen := fmt.Sprintf(":%d", cli.Port)
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(listen, nil)
+
+	level.Info(logger).Log("msg", fmt.Sprintf("Metrics will be served on http://localhost:%d", cli.Port))
+	level.Error(logger).Log(http.ListenAndServe(listen, nil))
 }
