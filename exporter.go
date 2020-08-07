@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -22,9 +23,14 @@ import (
 var logger log.Logger
 
 var cli struct {
-	AppKey string `arg:"true" help:"Ambient APP key"`
-	APIKey string `arg:"true" help:"Ambient API key"`
-	Port   uint16 `default:"9876" help:"http port to listen on"`
+	AppKey     string `arg:"true" help:"Ambient APP key"`
+	APIKey     string `arg:"true" help:"Ambient API key"`
+	Port       uint16 `default:"9876" help:"http port to listen on"`
+	ConfigFile string `help:"Path to json config file"`
+}
+
+var config struct {
+	MetricNames map[string]string `json:"metric_names"`
 }
 
 func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
@@ -61,8 +67,13 @@ func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
 }
 
 func makeGaugeVec(name string) *prometheus.GaugeVec {
+	finalName := name
+	if config.MetricNames[name] != "" {
+		finalName = config.MetricNames[name]
+	}
+
 	return promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: name,
+		Name: finalName,
 		Help: fmt.Sprintf("Value of %s reported by Ambient API", name),
 	}, []string{"device_mac"})
 }
@@ -258,6 +269,17 @@ func main() {
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
 	kong.Parse(&cli)
+
+	if cli.ConfigFile != "" {
+		file, err := os.Open(cli.ConfigFile)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+
+		bytes, _ := ioutil.ReadAll(file)
+		json.Unmarshal(bytes, &config)
+	}
 
 	key := ambient.NewKey(cli.AppKey, cli.APIKey)
 
