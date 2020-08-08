@@ -148,6 +148,7 @@ func makeDevice(mac string) device {
 }
 
 func recordDeviceMetrics(device ambient.DeviceRecord) {
+	level.Info(logger).Log("msg", "Recording device metrics", "mac_address", device.Macaddress)
 	for k, v := range device.LastDataFields {
 		gauges, ok := state.Gauges[device.Macaddress]
 		if ok {
