@@ -27,6 +27,7 @@ var cli struct {
 	APIKey     string `arg:"true" help:"Ambient API key"`
 	Port       uint16 `default:"9876" help:"http port to listen on"`
 	ConfigFile string `help:"Path to json config file"`
+	Debug      bool   `help:"Set log to debug"`
 }
 
 type gaugeConfig struct {
@@ -64,7 +65,10 @@ func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
 	case 200:
 	case 429, 502, 503:
 		{
-			fmt.Printf("Error code %d, retrying.\n", dr.HTTPResponseCode)
+			level.Warn(logger).Log(
+				"msg", "HTTP error from Ambient API. Retrying.",
+				"status_code", dr.HTTPResponseCode,
+			)
 			time.Sleep(1 * time.Second)
 			dr, err = ambient.Device(key)
 			if err != nil {
@@ -80,11 +84,15 @@ func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
 		}
 	default:
 		{
-			fmt.Fprintf(os.Stderr, "HTTPResponseCode=%d\n", dr.HTTPResponseCode)
+			level.Error(logger).Log(
+				"msg", "Unrecoverable HTTP error from Ambient API.",
+				"status_code", dr.HTTPResponseCode,
+			)
 			panic(dr)
 		}
 	}
 
+	level.Info(logger).Log("msg", "Succesfully fetched data from Ambient API")
 	return dr
 }
 
@@ -374,7 +382,10 @@ func main() {
 	kong.Parse(&cli)
 
 	logger = log.NewLogfmtLogger(os.Stderr)
-	levels := []level.Option{level.AllowInfo(), level.AllowDebug()}
+	levels := []level.Option{level.AllowInfo(), level.AllowError(), level.AllowWarn()}
+	if cli.Debug {
+		levels = append(levels, level.AllowDebug())
+	}
 	logger = level.NewFilter(logger, levels...)
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
