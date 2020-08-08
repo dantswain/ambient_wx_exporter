@@ -29,8 +29,30 @@ var cli struct {
 	ConfigFile string `help:"Path to json config file"`
 }
 
+type gaugeConfig struct {
+	APIName string            `json:"api_name"`
+	Name    string            `json:"name"`
+	Labels  map[string]string `json:"labels"`
+}
+
+type deviceConfig struct {
+	MacAddress string `json:"mac_address"`
+	Gauges     []gaugeConfig
+}
+
+type gaugeDict map[string](*prometheus.GaugeVec)
+type stringDict map[string]string
+type stringSet map[string](struct{})
+
 var config struct {
-	MetricNames map[string]string `json:"metric_names"`
+	Devices []deviceConfig
+}
+
+var state struct {
+	GaugesByName gaugeDict
+	LabelsByName map[string]stringSet
+	Gauges       map[string]gaugeDict
+	Labels       map[string](map[string](stringDict))
 }
 
 func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
@@ -67,13 +89,8 @@ func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
 }
 
 func makeGaugeVec(name string) *prometheus.GaugeVec {
-	finalName := name
-	if config.MetricNames[name] != "" {
-		finalName = config.MetricNames[name]
-	}
-
 	return promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: finalName,
+		Name: name,
 		Help: fmt.Sprintf("Value of %s reported by Ambient API", name),
 	}, []string{"device_mac"})
 }
@@ -92,6 +109,51 @@ func setBattGauge(gauge *prometheus.GaugeVec, mac string, val json.Number) {
 		panic(err)
 	}
 	setGauge(gauge, mac, f)
+}
+
+func setGaugeInterface(gauge *prometheus.GaugeVec, labels map[string]string, val interface{}) {
+	switch v := val.(type) {
+	case string:
+		gauge.With(labels).Set(0.0)
+	case int64:
+		gauge.With(labels).Set(float64(v))
+	case float64:
+		gauge.With(labels).Set(v)
+	default:
+		fmt.Println("UNEXPECTED TYPE")
+	}
+}
+
+type gaugeMetric struct {
+	Gauge  *prometheus.GaugeVec
+	Labels map[string]string
+}
+
+type device struct {
+	Gauges map[string]gaugeMetric
+}
+
+func makeDevice(mac string) device {
+	gauges := make(map[string]gaugeMetric)
+
+	return device{Gauges: gauges}
+}
+
+func recordDeviceMetrics(device ambient.DeviceRecord) {
+	for k, v := range device.LastDataFields {
+		gauges, ok := state.Gauges[device.Macaddress]
+		if ok {
+			gauge, ok := gauges[k]
+			if ok {
+				labels := state.Labels[device.Macaddress][k]
+				setGaugeInterface(gauge, labels, v)
+			} else {
+				level.Debug(logger).Log("msg", "No config for ambient metric", "mac_address", device.Macaddress, "api_key", k)
+			}
+		} else {
+			level.Warn(logger).Log("msg", "No config for mac address", "mac_address", device.Macaddress)
+		}
+	}
 }
 
 func recordMetrics(key ambient.Key) {
@@ -178,6 +240,8 @@ func recordMetrics(key ambient.Key) {
 			dr := getAmbientDevices(key)
 
 			for _, device := range dr.DeviceRecord {
+				recordDeviceMetrics(device)
+
 				mac := device.Macaddress
 
 				ld := device.LastData
@@ -263,12 +327,56 @@ func recordMetrics(key ambient.Key) {
 	}()
 }
 
-func main() {
-	logger = log.NewLogfmtLogger(os.Stderr)
-	logger = level.NewFilter(logger, level.AllowInfo())
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+func populateState() {
+	state.GaugesByName = make(gaugeDict)
+	state.LabelsByName = make(map[string](stringSet))
+	state.Gauges = make(map[string](gaugeDict))
+	state.Labels = make(map[string](map[string]stringDict))
+	for _, d := range config.Devices {
+		for _, g := range d.Gauges {
+			_, ok := state.LabelsByName[g.Name]
+			if !ok {
+				state.LabelsByName[g.Name] = make(map[string](struct{}))
+			}
+			for k := range g.Labels {
+				state.LabelsByName[g.Name][k] = struct{}{}
+			}
+			state.LabelsByName[g.Name]["mac_address"] = struct{}{}
+		}
+	}
 
+	for n, l := range state.LabelsByName {
+		labels := make([]string, len(l))
+		ix := 0
+		for ll := range l {
+			labels[ix] = ll
+			ix++
+		}
+
+		state.GaugesByName[n] = promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: n,
+		}, labels)
+	}
+
+	for _, d := range config.Devices {
+		state.Gauges[d.MacAddress] = make(map[string](*prometheus.GaugeVec))
+		state.Labels[d.MacAddress] = make(map[string]stringDict)
+		for _, g := range d.Gauges {
+			state.Gauges[d.MacAddress][g.APIName] = state.GaugesByName[g.Name]
+			labels := g.Labels
+			labels["mac_address"] = d.MacAddress
+			state.Labels[d.MacAddress][g.APIName] = labels
+		}
+	}
+}
+
+func main() {
 	kong.Parse(&cli)
+
+	logger = log.NewLogfmtLogger(os.Stderr)
+	levels := []level.Option{level.AllowInfo(), level.AllowDebug()}
+	logger = level.NewFilter(logger, levels...)
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
 	if cli.ConfigFile != "" {
 		file, err := os.Open(cli.ConfigFile)
@@ -279,6 +387,7 @@ func main() {
 
 		bytes, _ := ioutil.ReadAll(file)
 		json.Unmarshal(bytes, &config)
+		populateState()
 	}
 
 	key := ambient.NewKey(cli.AppKey, cli.APIKey)
