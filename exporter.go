@@ -20,6 +20,30 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var apiKeys = [...]string{
+	"baromabsin", "baromrelin",
+	"batt1", "batt2", "batt3", "batt4", "batt5", "batt6", "batt7", "batt8", "battin", "battout",
+	"dewPoint", "dewPoint1", "dewPoint2", "dewPoint3", "dewPoint4", "dewPoint5",
+	"dewPoint6", "dewPoint7", "dewPoint8", "dewPointin",
+	"dailyrainin", "eventrainin", "hourlyrainin",
+	"feelsLike", "feelsLike1", "feelsLike2", "feelsLike3", "feelsLike4", "feelsLike5",
+	"feelsLike6", "feelsLike7", "feelsLike8", "feelsLikein",
+	"humidity", "humidity1", "humidity2", "humidity3", "humidity4", "humidity5",
+	"humidity6", "humidity7", "humidity8", "humidityin",
+	"lastRain", "maxdailygust", "monthlyrainin", "solarradiation",
+	"temp1f", "temp2f", "temp3f", "temp4f", "temp5f", "temp6f", "temp7f", "temp8f",
+	"tempf", "tempinf", "uv", "weeklyrainin",
+	"winddir", "winddir_avg10m", "windgustmph", "windspdmph_avg10m",
+	"windspeedmph", "yearlyrainin",
+}
+
+var apiKeysWithoutMetrics = map[string]bool{
+	"dateutc":  true,
+	"date":     true,
+	"tz":       true,
+	"lastRain": true,
+}
+
 var logger log.Logger
 
 var cli struct {
@@ -50,10 +74,11 @@ var config struct {
 }
 
 var state struct {
-	GaugesByName gaugeDict
-	LabelsByName map[string]stringSet
-	Gauges       map[string]gaugeDict
-	Labels       map[string](map[string](stringDict))
+	GaugesByName  gaugeDict
+	LabelsByName  map[string]stringSet
+	Gauges        map[string]gaugeDict
+	Labels        map[string](map[string](stringDict))
+	DefaultGauges gaugeDict
 }
 
 func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
@@ -121,14 +146,14 @@ func setBattGauge(gauge *prometheus.GaugeVec, mac string, val json.Number) {
 
 func setGaugeInterface(gauge *prometheus.GaugeVec, labels map[string]string, val interface{}) {
 	switch v := val.(type) {
-	case string:
-		gauge.With(labels).Set(0.0)
+	// case string:
+	// 	gauge.With(labels).Set(0.0)
 	case int64:
 		gauge.With(labels).Set(float64(v))
 	case float64:
 		gauge.With(labels).Set(v)
 	default:
-		fmt.Println("UNEXPECTED TYPE")
+		level.Warn(logger).Log("msg", "Unhandled metric type", "type", fmt.Sprintf("%T", v))
 	}
 }
 
@@ -148,7 +173,6 @@ func makeDevice(mac string) device {
 }
 
 func recordDeviceMetrics(device ambient.DeviceRecord) {
-	level.Info(logger).Log("msg", "Recording device metrics", "mac_address", device.Macaddress)
 	for k, v := range device.LastDataFields {
 		gauges, ok := state.Gauges[device.Macaddress]
 		if ok {
@@ -165,173 +189,33 @@ func recordDeviceMetrics(device ambient.DeviceRecord) {
 	}
 }
 
+func recordDefaultMetrics(device ambient.DeviceRecord) {
+	labels := map[string]string{"mac_address": device.Macaddress}
+	for k, v := range device.LastDataFields {
+		if apiKeysWithoutMetrics[k] {
+			continue
+		}
+		gauge, ok := state.DefaultGauges[k]
+		if ok {
+			setGaugeInterface(gauge, labels, v)
+		} else {
+			level.Warn(logger).Log("msg", "No default metric defined for api key", "mac_address", device.Macaddress, "api_key", k)
+		}
+	}
+}
+
 func recordMetrics(key ambient.Key) {
-	var (
-		// float values
-		tempInF            = makeGaugeVec("tempinf")
-		baromAbsIn         = makeGaugeVec("baromabsin")
-		baromRelIn         = makeGaugeVec("baromrelin")
-		tempF              = makeGaugeVec("tempf")
-		co2                = makeGaugeVec("co2")
-		dailyRainIn        = makeGaugeVec("dailyrainin")
-		dewPoint           = makeGaugeVec("dewpoint")
-		eventRainIn        = makeGaugeVec("eventrainin")
-		feelsLike          = makeGaugeVec("feelslike")
-		hourlyRainIn       = makeGaugeVec("hourlyrainin")
-		maxDailyGust       = makeGaugeVec("maxdailygust")
-		pm2524h            = makeGaugeVec("pm25_24h")
-		monthlyRainIn      = makeGaugeVec("monthlyRainIn")
-		solarRadiation     = makeGaugeVec("solarradiation")
-		temp1F             = makeGaugeVec("temp1f")
-		temp2F             = makeGaugeVec("temp2f")
-		temp3F             = makeGaugeVec("temp3f")
-		temp4F             = makeGaugeVec("temp4f")
-		temp5F             = makeGaugeVec("temp5f")
-		temp6F             = makeGaugeVec("temp6f")
-		temp7F             = makeGaugeVec("temp7f")
-		temp8F             = makeGaugeVec("temp8f")
-		temp9F             = makeGaugeVec("temp9f")
-		temp10F            = makeGaugeVec("temp10f")
-		totalRainIn        = makeGaugeVec("totalrainin")
-		uv                 = makeGaugeVec("uv")
-		weeklyRainIn       = makeGaugeVec("weeklyrainin")
-		windGustMPH        = makeGaugeVec("windgustmph")
-		windSpeedMPH       = makeGaugeVec("windspeedmph")
-		windSpeedMPHAvg2m  = makeGaugeVec("windspdmph_avg2m")
-		windSpeedMPHAvg10m = makeGaugeVec("windspdmph_avg10m")
-		yearlyRainIn       = makeGaugeVec("yearlyrainin")
-
-		// integer values
-		humidity      = makeGaugeVec("humidity")
-		humidity1     = makeGaugeVec("humidity1")
-		humidity2     = makeGaugeVec("humidity2")
-		humidity3     = makeGaugeVec("humidity3")
-		humidity4     = makeGaugeVec("humidity4")
-		humidity5     = makeGaugeVec("humidity5")
-		humidity6     = makeGaugeVec("humidity6")
-		humidity7     = makeGaugeVec("humidity7")
-		humidity8     = makeGaugeVec("humidity8")
-		humidity9     = makeGaugeVec("humidity9")
-		humidity10    = makeGaugeVec("humidity10")
-		humidityIn    = makeGaugeVec("humidityin")
-		pm25          = makeGaugeVec("pm25")
-		relay1        = makeGaugeVec("relay1")
-		relay2        = makeGaugeVec("relay2")
-		relay3        = makeGaugeVec("relay3")
-		relay4        = makeGaugeVec("relay4")
-		relay5        = makeGaugeVec("relay5")
-		relay6        = makeGaugeVec("relay6")
-		relay7        = makeGaugeVec("relay7")
-		relay8        = makeGaugeVec("relay8")
-		relay9        = makeGaugeVec("relay9")
-		relay10       = makeGaugeVec("relay10")
-		windDir       = makeGaugeVec("winddir")
-		windGustDir   = makeGaugeVec("windgustdir")
-		windDirAvg2m  = makeGaugeVec("winddir_avg2m")
-		windDirAvg10m = makeGaugeVec("winddir_avg10m")
-
-		// batteries
-		battOut = makeGaugeVec("battout")
-		batt1   = makeGaugeVec("batt1")
-		batt2   = makeGaugeVec("batt2")
-		batt3   = makeGaugeVec("batt3")
-		batt4   = makeGaugeVec("batt4")
-		batt5   = makeGaugeVec("batt5")
-		batt6   = makeGaugeVec("batt6")
-		batt7   = makeGaugeVec("batt7")
-		batt8   = makeGaugeVec("batt8")
-		batt9   = makeGaugeVec("batt9")
-		batt10  = makeGaugeVec("batt10")
-	)
-
 	go func() {
 		for {
 			dr := getAmbientDevices(key)
 
 			for _, device := range dr.DeviceRecord {
+				level.Info(logger).Log("msg", "Recording device metrics", "mac_address", device.Macaddress)
 				recordDeviceMetrics(device)
+				recordDefaultMetrics(device)
 
-				mac := device.Macaddress
-
-				ld := device.LastData
-				// floats
-				setGauge(tempInF, mac, ld.Tempinf)
-				setGauge(baromAbsIn, mac, ld.Baromabsin)
-				setGauge(baromRelIn, mac, ld.Baromrelin)
-				setGauge(tempF, mac, ld.Tempf)
-				setGauge(co2, mac, ld.Co2)
-				setGauge(dailyRainIn, mac, ld.Dailyrainin)
-				setGauge(dewPoint, mac, ld.Dewpoint)
-				setGauge(eventRainIn, mac, ld.Eventrainin)
-				setGauge(feelsLike, mac, ld.Feelslike)
-				setGauge(hourlyRainIn, mac, ld.Hourlyrainin)
-				setGauge(maxDailyGust, mac, ld.Maxdailygust)
-				setGauge(pm2524h, mac, ld.Pm25_24h)
-				setGauge(monthlyRainIn, mac, ld.Monthlyrainin)
-				setGauge(solarRadiation, mac, ld.Solarradiation)
-				setGauge(temp1F, mac, ld.Temp1f)
-				setGauge(temp2F, mac, ld.Temp2f)
-				setGauge(temp3F, mac, ld.Temp3f)
-				setGauge(temp4F, mac, ld.Temp4f)
-				setGauge(temp5F, mac, ld.Temp5f)
-				setGauge(temp6F, mac, ld.Temp6f)
-				setGauge(temp7F, mac, ld.Temp7f)
-				setGauge(temp8F, mac, ld.Temp8f)
-				setGauge(temp9F, mac, ld.Temp9f)
-				setGauge(temp10F, mac, ld.Temp10f)
-				setGauge(totalRainIn, mac, ld.Totalrainin)
-				setGauge(uv, mac, ld.Uv)
-				setGauge(weeklyRainIn, mac, ld.Weeklyrainin)
-				setGauge(windGustMPH, mac, ld.Windgustmph)
-				setGauge(windSpeedMPH, mac, ld.Windspeedmph)
-				setGauge(windSpeedMPHAvg2m, mac, ld.Windspdmph_avg2m)
-				setGauge(windSpeedMPHAvg10m, mac, ld.Windspdmph_avg10m)
-				setGauge(yearlyRainIn, mac, ld.Yearlyrainin)
-
-				// ints
-				setGauge(humidity, mac, float64(ld.Humidity))
-				setGauge(humidity1, mac, float64(ld.Humidity1))
-				setGauge(humidity2, mac, float64(ld.Humidity2))
-				setGauge(humidity3, mac, float64(ld.Humidity3))
-				setGauge(humidity4, mac, float64(ld.Humidity4))
-				setGauge(humidity5, mac, float64(ld.Humidity5))
-				setGauge(humidity6, mac, float64(ld.Humidity6))
-				setGauge(humidity7, mac, float64(ld.Humidity7))
-				setGauge(humidity8, mac, float64(ld.Humidity8))
-				setGauge(humidity9, mac, float64(ld.Humidity9))
-				setGauge(humidity10, mac, float64(ld.Humidity10))
-				setGauge(humidityIn, mac, float64(ld.Humidityin))
-				setGauge(pm25, mac, float64(ld.Pm25))
-				setGauge(relay1, mac, float64(ld.Relay1))
-				setGauge(relay2, mac, float64(ld.Relay2))
-				setGauge(relay3, mac, float64(ld.Relay3))
-				setGauge(relay4, mac, float64(ld.Relay4))
-				setGauge(relay5, mac, float64(ld.Relay5))
-				setGauge(relay6, mac, float64(ld.Relay6))
-				setGauge(relay7, mac, float64(ld.Relay7))
-				setGauge(relay8, mac, float64(ld.Relay8))
-				setGauge(relay9, mac, float64(ld.Relay9))
-				setGauge(relay10, mac, float64(ld.Relay10))
-				setGauge(windDir, mac, float64(ld.Winddir))
-				setGauge(windGustDir, mac, float64(ld.Windgustdir))
-				setGauge(windDirAvg2m, mac, float64(ld.Winddir_avg2m))
-				setGauge(windDirAvg10m, mac, float64(ld.Winddir_avg10m))
-
-				// batteries
-				setBattGauge(battOut, mac, ld.Battout)
-				setBattGauge(batt1, mac, ld.Batt1)
-				setBattGauge(batt2, mac, ld.Batt2)
-				setBattGauge(batt3, mac, ld.Batt3)
-				setBattGauge(batt4, mac, ld.Batt4)
-				setBattGauge(batt5, mac, ld.Batt5)
-				setBattGauge(batt6, mac, ld.Batt6)
-				setBattGauge(batt7, mac, ld.Batt7)
-				setBattGauge(batt8, mac, ld.Batt8)
-				setBattGauge(batt9, mac, ld.Batt9)
-				setBattGauge(batt10, mac, ld.Batt10)
+				time.Sleep(60 * time.Second)
 			}
-
-			time.Sleep(60 * time.Second)
 		}
 	}()
 }
@@ -341,6 +225,8 @@ func populateState() {
 	state.LabelsByName = make(map[string](stringSet))
 	state.Gauges = make(map[string](gaugeDict))
 	state.Labels = make(map[string](map[string]stringDict))
+	state.DefaultGauges = make(gaugeDict)
+
 	for _, d := range config.Devices {
 		for _, g := range d.Gauges {
 			_, ok := state.LabelsByName[g.Name]
@@ -376,6 +262,12 @@ func populateState() {
 			labels["mac_address"] = d.MacAddress
 			state.Labels[d.MacAddress][g.APIName] = labels
 		}
+	}
+
+	for _, n := range apiKeys {
+		state.DefaultGauges[n] = promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: n,
+		}, []string{"mac_address"})
 	}
 }
 
