@@ -40,12 +40,12 @@ test-release:
 # Clean up any cruft left over from old builds
 .PHONY: clean
 clean:
-	rm -rf ambient-wx-exporter dist/
+	rm -rf ambient_wx_exporter dist/
 
 # Build the application
 .PHONY: build
 build: clean
-	CGO_ENABLED=0 go build ./cmd/ambient-wx-exporter
+	CGO_ENABLED=0 go build ./cmd/ambient_wx_exporter
 
 # Create a git tag
 .PHONY: tag

@@ -1,4 +1,4 @@
-module github.com/dantswain/ambient-wx-exporter
+module github.com/dantswain/ambient_wx_exporter
 
 go 1.14
 
