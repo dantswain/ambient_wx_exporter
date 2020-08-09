@@ -175,6 +175,9 @@ func makeDevice(mac string) device {
 
 func recordDeviceMetrics(device ambient.DeviceRecord) {
 	for k, v := range device.LastDataFields {
+		if apiKeysWithoutMetrics[k] {
+			continue
+		}
 		gauges, ok := state.Gauges[device.Macaddress]
 		if ok {
 			gauge, ok := gauges[k]
@@ -187,6 +190,35 @@ func recordDeviceMetrics(device ambient.DeviceRecord) {
 		} else {
 			level.Warn(logger).Log("msg", "No config for mac address", "mac_address", device.Macaddress)
 		}
+	}
+
+	datetime, ok := device.LastDataFields["dateutc"]
+	now := time.Now()
+	if ok {
+		millis := now.UnixNano() / 1000000.0
+		diff := (float64(millis) - (datetime.(float64))) / 1000.0
+		state.Gauges[device.Macaddress]["data_age"].With(
+			prometheus.Labels{"mac_address": device.Macaddress},
+		).Set(diff)
+	}
+
+	raintime, ok := device.LastDataFields["lastRain"]
+	if ok {
+		layout := "2006-01-02T15:04:05.000Z"
+		t, err := time.Parse(layout, raintime.(string))
+
+		if err != nil {
+			level.Warn(logger).Log(
+				"msg", "Unable to parse last rain timestamp",
+				"timestamp", raintime.(string),
+				"error", err,
+			)
+		}
+
+		diff := float64(now.Unix() - t.Unix())
+		state.Gauges[device.Macaddress]["time_since_rain"].With(
+			prometheus.Labels{"mac_address": device.Macaddress},
+		).Set(diff)
 	}
 }
 
@@ -230,6 +262,14 @@ func populateState() {
 	state.Labels = make(map[string](map[string]stringDict))
 	state.DefaultGauges = make(gaugeDict)
 
+	dataAgeGauge := promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "data_age",
+	}, []string{"mac_address"})
+
+	rainAgeGauge := promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "time_since_rain",
+	}, []string{"mac_address"})
+
 	for _, d := range config.Devices {
 		for _, g := range d.Gauges {
 			_, ok := state.LabelsByName[g.Name]
@@ -265,6 +305,8 @@ func populateState() {
 			labels["mac_address"] = d.MacAddress
 			state.Labels[d.MacAddress][g.APIName] = labels
 		}
+		state.Gauges[d.MacAddress]["data_age"] = dataAgeGauge
+		state.Gauges[d.MacAddress]["time_since_rain"] = rainAgeGauge
 	}
 
 	if !cli.DisableDefaultGauges {
