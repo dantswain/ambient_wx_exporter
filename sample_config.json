@@ -1,0 +1,609 @@
+{
+  "devices": [
+    {
+      "gauges": [
+        {
+          "api_name": "tempinf",
+          "labels": {
+            "indoors": "true",
+            "location": "downstairs",
+            "sensor": "temp0"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "battin",
+          "labels": {
+            "indoors": "true",
+            "location": "downstairs",
+            "sensor": "temp0"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "humidityin",
+          "labels": {
+            "indoors": "true",
+            "location": "downstairs",
+            "sensor": "temp0"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "baromrelin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "baromter_relative"
+        },
+        {
+          "api_name": "baromabsin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "baromter_absolute"
+        },
+        {
+          "api_name": "tempf",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "battout",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "humidity",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "winddir",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "wind_direction"
+        },
+        {
+          "api_name": "winddir_avg10m",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "wind_direction10"
+        },
+        {
+          "api_name": "windspeedmph",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "wind_speed"
+        },
+        {
+          "api_name": "windspdmph_avg10m",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "wind_speed10"
+        },
+        {
+          "api_name": "windgustmph",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "wind_gust"
+        },
+        {
+          "api_name": "maxdailygust",
+          "labels": {
+            "indoors": "falase",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "wind_gust_day"
+        },
+        {
+          "api_name": "hourlyrainin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main",
+            "timespan": "hourly"
+          },
+          "name": "rain"
+        },
+        {
+          "api_name": "eventrainin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main",
+            "timespan": "event"
+          },
+          "name": "rain"
+        },
+        {
+          "api_name": "dailyrainin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main",
+            "timespan": "day"
+          },
+          "name": "rain"
+        },
+        {
+          "api_name": "weeklyrainin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main",
+            "timespan": "week"
+          },
+          "name": "rain"
+        },
+        {
+          "api_name": "monthlyrainin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main",
+            "timespan": "month"
+          },
+          "name": "rain"
+        },
+        {
+          "api_name": "yearlyrainin",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main",
+            "timespan": "year"
+          },
+          "name": "rain"
+        },
+        {
+          "api_name": "solarradiation",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "solar_radiation"
+        },
+        {
+          "api_name": "uv",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "uv"
+        },
+        {
+          "api_name": "temp1f",
+          "labels": {
+            "indoors": "false",
+            "location": "porch",
+            "sensor": "temp1"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity1",
+          "labels": {
+            "indoors": "false",
+            "location": "porch",
+            "sensor": "temp1"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "temp2f",
+          "labels": {
+            "indoors": "true",
+            "location": "basement",
+            "sensor": "temp2"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity2",
+          "labels": {
+            "indoors": "true",
+            "location": "basement",
+            "sensor": "temp2"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "temp3f",
+          "labels": {
+            "indoors": "false",
+            "location": "garage",
+            "sensor": "temp3"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity3",
+          "labels": {
+            "indoors": "false",
+            "location": "garage",
+            "sensor": "temp3"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "temp4f",
+          "labels": {
+            "indoors": "true",
+            "location": "master",
+            "sensor": "temp4"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity4",
+          "labels": {
+            "indoors": "true",
+            "location": "master",
+            "sensor": "temp4"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "temp5f",
+          "labels": {
+            "indoors": "true",
+            "location": "den",
+            "sensor": "temp5"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity5",
+          "labels": {
+            "indoors": "true",
+            "location": "den",
+            "sensor": "temp5"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "temp6f",
+          "labels": {
+            "indoors": "true",
+            "location": "guest_room",
+            "sensor": "temp6"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity6",
+          "labels": {
+            "indoors": "true",
+            "location": "guest_room",
+            "sensor": "temp6"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "temp7f",
+          "labels": {
+            "indoors": "true",
+            "location": "office",
+            "sensor": "temp7"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity7",
+          "labels": {
+            "indoors": "true",
+            "location": "office",
+            "sensor": "temp7"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "temp8f",
+          "labels": {
+            "indoors": "true",
+            "location": "kitchen",
+            "sensor": "temp8"
+          },
+          "name": "temperature"
+        },
+        {
+          "api_name": "humidity8",
+          "labels": {
+            "indoors": "true",
+            "location": "kitchen",
+            "sensor": "temp8"
+          },
+          "name": "humidity"
+        },
+        {
+          "api_name": "batt1",
+          "labels": {
+            "indoors": "false",
+            "location": "porch",
+            "sensor": "temp1"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "batt2",
+          "labels": {
+            "indoors": "true",
+            "location": "basement",
+            "sensor": "temp2"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "batt3",
+          "labels": {
+            "indoors": "false",
+            "location": "garage",
+            "sensor": "temp3"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "batt4",
+          "labels": {
+            "indoors": "true",
+            "location": "master",
+            "sensor": "temp4"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "batt5",
+          "labels": {
+            "indoors": "true",
+            "location": "den",
+            "sensor": "temp5"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "batt6",
+          "labels": {
+            "indoors": "true",
+            "location": "guest_room",
+            "sensor": "temp6"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "batt7",
+          "labels": {
+            "indoors": "true",
+            "location": "office",
+            "sensor": "temp7"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "batt8",
+          "labels": {
+            "indoors": "true",
+            "location": "kitchen",
+            "sensor": "temp8"
+          },
+          "name": "battery"
+        },
+        {
+          "api_name": "feelsLike",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint",
+          "labels": {
+            "indoors": "false",
+            "location": "roof",
+            "sensor": "main"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike1",
+          "labels": {
+            "indoors": "false",
+            "location": "porch",
+            "sensor": "temp1"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint1",
+          "labels": {
+            "indoors": "false",
+            "location": "porch",
+            "sensor": "temp1"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike2",
+          "labels": {
+            "indoors": "true",
+            "location": "basement",
+            "sensor": "temp2"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint2",
+          "labels": {
+            "indoors": "true",
+            "location": "basement",
+            "sensor": "temp2"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike3",
+          "labels": {
+            "indoors": "false",
+            "location": "garage",
+            "sensor": "temp3"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint3",
+          "labels": {
+            "indoors": "false",
+            "location": "garage",
+            "sensor": "temp3"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike4",
+          "labels": {
+            "indoors": "true",
+            "location": "master",
+            "sensor": "temp4"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint4",
+          "labels": {
+            "indoors": "true",
+            "location": "master",
+            "sensor": "temp4"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike5",
+          "labels": {
+            "indoors": "true",
+            "location": "den",
+            "sensor": "temp5"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint5",
+          "labels": {
+            "indoors": "true",
+            "location": "den",
+            "sensor": "temp5"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike6",
+          "labels": {
+            "indoors": "true",
+            "location": "guest_room",
+            "sensor": "temp6"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint6",
+          "labels": {
+            "indoors": "true",
+            "location": "guest_room",
+            "sensor": "temp6"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike7",
+          "labels": {
+            "indoors": "true",
+            "location": "office",
+            "sensor": "temp7"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint7",
+          "labels": {
+            "indoors": "true",
+            "location": "office",
+            "sensor": "temp7"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLike8",
+          "labels": {
+            "indoors": "true",
+            "location": "kitchen",
+            "sensor": "temp8"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPoint8",
+          "labels": {
+            "indoors": "true",
+            "location": "kitchen",
+            "sensor": "temp8"
+          },
+          "name": "dew_point"
+        },
+        {
+          "api_name": "feelsLikein",
+          "labels": {
+            "indoors": "true",
+            "location": "downstairs",
+            "sensor": "temp0"
+          },
+          "name": "feels_like_temperature"
+        },
+        {
+          "api_name": "dewPointin",
+          "labels": {
+            "indoors": "true",
+            "location": "downstairs",
+            "sensor": "temp0"
+          },
+          "name": "dew_point"
+        }
+      ],
+      "mac_address": "AA:AA:AA:AA:AA:AA"
+    }
+  ]
+}
