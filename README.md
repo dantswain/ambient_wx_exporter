@@ -1,5 +1,7 @@
 # ambient-wx-exporter
 
+[![Build Status](https://travis-ci.org/dantswain/ambient_wx_exporter.svg?branch=master)](https://travis-ci.org/dantswain/ambient_wx_exporter)
+
 A [prometheus](https://prometheus.io) metrics exporter for [Ambient
 Weather](https://ambientweather.net) personal weather station data.  The basic
 idea is that this application will fetch data from the Ambient API
@@ -14,7 +16,7 @@ This is very much work in progress.
 First, build the project:
 
 ```
-go build
+make build
 ```
 
 You'll need your app and API keys from Ambient, which you can get from your
