@@ -80,6 +80,8 @@ var state struct {
 	Gauges        map[string]gaugeDict
 	Labels        map[string](map[string](stringDict))
 	DefaultGauges gaugeDict
+	DataAgeGauge  *prometheus.GaugeVec
+	RainAgeGauge  *prometheus.GaugeVec
 }
 
 func getAmbientDevices(key ambient.Key) ambient.APIDeviceResponse {
@@ -191,13 +193,15 @@ func recordDeviceMetrics(device ambient.DeviceRecord) {
 			level.Warn(logger).Log("msg", "No config for mac address", "mac_address", device.Macaddress)
 		}
 	}
+}
 
+func recordAges(device ambient.DeviceRecord) {
 	datetime, ok := device.LastDataFields["dateutc"]
 	now := time.Now()
 	if ok {
 		millis := now.UnixNano() / 1000000.0
 		diff := (float64(millis) - (datetime.(float64))) / 1000.0
-		state.Gauges[device.Macaddress]["data_age"].With(
+		state.DataAgeGauge.With(
 			prometheus.Labels{"mac_address": device.Macaddress},
 		).Set(diff)
 	}
@@ -216,7 +220,7 @@ func recordDeviceMetrics(device ambient.DeviceRecord) {
 		}
 
 		diff := float64(now.Unix() - t.Unix())
-		state.Gauges[device.Macaddress]["time_since_rain"].With(
+		state.RainAgeGauge.With(
 			prometheus.Labels{"mac_address": device.Macaddress},
 		).Set(diff)
 	}
@@ -244,7 +248,10 @@ func recordMetrics(key ambient.Key) {
 
 			for _, device := range dr.DeviceRecord {
 				level.Info(logger).Log("msg", "Recording device metrics", "mac_address", device.Macaddress)
-				recordDeviceMetrics(device)
+				if cli.ConfigFile != "" {
+					recordDeviceMetrics(device)
+				}
+				recordAges(device)
 				if !cli.DisableDefaultGauges {
 					recordDefaultMetrics(device)
 				}
@@ -261,14 +268,6 @@ func populateState() {
 	state.Gauges = make(map[string](gaugeDict))
 	state.Labels = make(map[string](map[string]stringDict))
 	state.DefaultGauges = make(gaugeDict)
-
-	dataAgeGauge := promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "data_age",
-	}, []string{"mac_address"})
-
-	rainAgeGauge := promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "time_since_rain",
-	}, []string{"mac_address"})
 
 	for _, d := range config.Devices {
 		for _, g := range d.Gauges {
@@ -305,8 +304,6 @@ func populateState() {
 			labels["mac_address"] = d.MacAddress
 			state.Labels[d.MacAddress][g.APIName] = labels
 		}
-		state.Gauges[d.MacAddress]["data_age"] = dataAgeGauge
-		state.Gauges[d.MacAddress]["time_since_rain"] = rainAgeGauge
 	}
 
 	if !cli.DisableDefaultGauges {
@@ -316,17 +313,25 @@ func populateState() {
 			}, []string{"mac_address"})
 		}
 	}
+
+	state.DataAgeGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "data_age",
+	}, []string{"mac_address"})
+
+	state.RainAgeGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "time_since_rain",
+	}, []string{"mac_address"})
 }
 
 func main() {
 	kong.Parse(&cli)
 
 	logger = log.NewLogfmtLogger(os.Stderr)
-	levels := []level.Option{level.AllowInfo(), level.AllowError(), level.AllowWarn()}
+	logLevel := level.AllowInfo()
 	if cli.Debug {
-		levels = append(levels, level.AllowDebug())
+		logLevel = level.AllowDebug()
 	}
-	logger = level.NewFilter(logger, levels...)
+	logger = level.NewFilter(logger, logLevel)
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
 	if cli.ConfigFile != "" {
@@ -338,8 +343,8 @@ func main() {
 
 		bytes, _ := ioutil.ReadAll(file)
 		json.Unmarshal(bytes, &config)
-		populateState()
 	}
+	populateState()
 
 	key := ambient.NewKey(cli.AppKey, cli.APIKey)
 
