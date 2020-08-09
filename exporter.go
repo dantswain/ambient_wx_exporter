@@ -47,11 +47,12 @@ var apiKeysWithoutMetrics = map[string]bool{
 var logger log.Logger
 
 var cli struct {
-	AppKey     string `arg:"true" help:"Ambient APP key"`
-	APIKey     string `arg:"true" help:"Ambient API key"`
-	Port       uint16 `default:"9876" help:"http port to listen on"`
-	ConfigFile string `help:"Path to json config file"`
-	Debug      bool   `help:"Set log to debug"`
+	AppKey               string `arg:"true" help:"Ambient APP key"`
+	APIKey               string `arg:"true" help:"Ambient API key"`
+	Port                 uint16 `default:"9876" help:"http port to listen on"`
+	ConfigFile           string `help:"Path to json config file"`
+	Debug                bool   `help:"Set log to debug"`
+	DisableDefaultGauges bool   `help:"Disable default gauge metrics"`
 }
 
 type gaugeConfig struct {
@@ -212,7 +213,9 @@ func recordMetrics(key ambient.Key) {
 			for _, device := range dr.DeviceRecord {
 				level.Info(logger).Log("msg", "Recording device metrics", "mac_address", device.Macaddress)
 				recordDeviceMetrics(device)
-				recordDefaultMetrics(device)
+				if !cli.DisableDefaultGauges {
+					recordDefaultMetrics(device)
+				}
 
 				time.Sleep(60 * time.Second)
 			}
@@ -264,10 +267,12 @@ func populateState() {
 		}
 	}
 
-	for _, n := range apiKeys {
-		state.DefaultGauges[n] = promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: n,
-		}, []string{"mac_address"})
+	if !cli.DisableDefaultGauges {
+		for _, n := range apiKeys {
+			state.DefaultGauges[n] = promauto.NewGaugeVec(prometheus.GaugeOpts{
+				Name: n,
+			}, []string{"mac_address"})
+		}
 	}
 }
 
