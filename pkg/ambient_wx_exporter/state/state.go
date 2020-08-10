@@ -40,7 +40,7 @@ var apiKeys = [...]string{
 }
 
 // Init the state from config
-func Init(appKey string, apiKey string, theConfig *config.Config, disableDefaultGauges bool) *State {
+func Init(metricPrefix string, appKey string, apiKey string, theConfig *config.Config, disableDefaultGauges bool) *State {
 	state := &State{}
 
 	state.AppKey = appKey
@@ -74,7 +74,7 @@ func Init(appKey string, apiKey string, theConfig *config.Config, disableDefault
 		}
 
 		gaugesByName[n] = promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: n,
+			Name: metricPrefix + n,
 		}, labels)
 	}
 
@@ -92,17 +92,17 @@ func Init(appKey string, apiKey string, theConfig *config.Config, disableDefault
 	if !disableDefaultGauges {
 		for _, n := range apiKeys {
 			state.DefaultGauges[n] = promauto.NewGaugeVec(prometheus.GaugeOpts{
-				Name: n,
+				Name: metricPrefix + n,
 			}, []string{"mac_address"})
 		}
 	}
 
 	state.DataAgeGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "data_age",
+		Name: metricPrefix + "data_age",
 	}, []string{"mac_address"})
 
 	state.RainAgeGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "time_since_rain",
+		Name: metricPrefix + "time_since_rain",
 	}, []string{"mac_address"})
 
 	return state

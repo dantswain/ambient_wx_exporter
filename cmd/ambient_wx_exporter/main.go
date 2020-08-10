@@ -21,6 +21,7 @@ var cli struct {
 	APIKey               string `arg:"true" help:"Ambient API key"`
 	Port                 uint16 `default:"9876" help:"http port to listen on"`
 	ConfigFile           string `help:"Path to json config file"`
+	MetricPrefix         string `help:"Metric name prefix" default:"ambient_wx_"`
 	Debug                bool   `help:"Set log to debug"`
 	DisableDefaultGauges bool   `help:"Disable default gauge metrics"`
 }
@@ -45,7 +46,7 @@ func main() {
 		}
 	}
 
-	theState := state.Init(cli.AppKey, cli.APIKey, theConfig, cli.DisableDefaultGauges)
+	theState := state.Init(cli.MetricPrefix, cli.AppKey, cli.APIKey, theConfig, cli.DisableDefaultGauges)
 
 	metrics.RecordMetrics(theState, logger)
 
