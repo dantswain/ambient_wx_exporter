@@ -18,44 +18,51 @@ var apiKeysWithoutMetrics = map[string]bool{
 	"lastRain": true,
 }
 
-func getAmbientDevices(key ambient.Key, logger log.Logger) ambient.APIDeviceResponse {
-	dr, err := ambient.Device(key)
-	if err != nil {
-		panic(err)
-	}
-	switch dr.HTTPResponseCode {
-	case 200:
-	case 429, 502, 503:
-		{
+func getAmbientDevices(key ambient.Key, logger log.Logger) (ambient.APIDeviceResponse, error) {
+	var dr ambient.APIDeviceResponse
+	maxRetries := 5
+	backoff := 1 * time.Second
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		var err error
+		dr, err = ambient.Device(key)
+		if err != nil {
 			level.Warn(logger).Log(
-				"msg", "HTTP error from Ambient API. Retrying.",
-				"status_code", dr.HTTPResponseCode,
+				"msg", "Ambient API request failed",
+				"attempt", attempt,
+				"error", err,
 			)
-			time.Sleep(1 * time.Second)
-			dr, err = ambient.Device(key)
-			if err != nil {
-				panic(err)
-			}
+		} else {
 			switch dr.HTTPResponseCode {
 			case 200:
+				level.Info(logger).Log("msg", "Successfully fetched data from Ambient API")
+				return dr, nil
+			case 429, 502, 503:
+				level.Warn(logger).Log(
+					"msg", "Recoverable HTTP error from Ambient API. Retrying.",
+					"attempt", attempt,
+					"status_code", dr.HTTPResponseCode,
+				)
 			default:
-				{
-					panic(dr)
-				}
+				level.Error(logger).Log(
+					"msg", "Unrecoverable HTTP error from Ambient API.",
+					"status_code", dr.HTTPResponseCode,
+				)
+				return dr, fmt.Errorf("unrecoverable ambient API status %d", dr.HTTPResponseCode)
 			}
 		}
-	default:
-		{
-			level.Error(logger).Log(
-				"msg", "Unrecoverable HTTP error from Ambient API.",
-				"status_code", dr.HTTPResponseCode,
-			)
-			panic(dr)
+
+		if attempt == maxRetries {
+			break
+		}
+
+		time.Sleep(backoff)
+		backoff *= 2
+		if backoff > 30*time.Second {
+			backoff = 30 * time.Second
 		}
 	}
 
-	level.Info(logger).Log("msg", "Succesfully fetched data from Ambient API")
-	return dr
+	return dr, fmt.Errorf("failed to fetch ambient devices after %d attempts", maxRetries)
 }
 
 func recordDeviceMetrics(device ambient.DeviceRecord, theState *state.State, logger log.Logger) {
@@ -138,7 +145,11 @@ func recordDefaultMetrics(device ambient.DeviceRecord, theState *state.State, lo
 }
 
 func recordLoop(key ambient.Key, theState *state.State, logger log.Logger) {
-	dr := getAmbientDevices(key, logger)
+	dr, err := getAmbientDevices(key, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "Unable to fetch Ambient device data", "error", err)
+		return
+	}
 
 	for _, device := range dr.DeviceRecord {
 		level.Info(logger).Log("msg", "Recording device metrics", "mac_address", device.Macaddress)
@@ -150,13 +161,17 @@ func recordLoop(key ambient.Key, theState *state.State, logger log.Logger) {
 			recordDefaultMetrics(device, theState, logger)
 		}
 	}
-
 }
 
 // RecordMetrics spawns a loop to record metrics
 func RecordMetrics(theState *state.State, logger log.Logger) {
 	key := ambient.NewKey(theState.AppKey, theState.APIKey)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				level.Error(logger).Log("msg", "Recovered from metrics worker panic", "error", r)
+			}
+		}()
 		for {
 			recordLoop(key, theState, logger)
 			time.Sleep(60 * time.Second)
